@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
+	"os"
 
 	"github.com/mpenate/stokkolm/schemas"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,33 +14,39 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var(
+	mongoURL = getEnvOrDefault("MONGO_URL", "mongodb://mongo:27017/")
+)
+
 
 //InitializeDB sets the db on startup for demo purposes
 func InitializeDB() {
 	initializeInventory()
-
+	initializeProducts()
 }
 
+
 //GetProductByName uses a name to query the db
-func GetProductByName(name string) schemas.Product{
+func GetProductByName(name string) (schemas.Product, error){
 	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	if err != nil {
-		log.Panicf("Error starting mongoClient: %s", err.Error())
+		log.Printf("Error starting mongoClient: %s", err.Error())
 	}
 
 	mongoResp := client.Database("testing").Collection("products").FindOne(ctx, bson.M{"name": name})
 	if err != nil {
-		log.Panicf("Error getting products: %s", err.Error())
+		log.Printf("Error getting product %s", err.Error())
 	}	
 	var result schemas.Product
 
 	err = mongoResp.Decode(&result)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error decoding product %s", err.Error())
+		return schemas.Product{}, err
 	}
-	return result
+	return result, nil
 
 }
 
@@ -47,7 +54,7 @@ func GetProductByName(name string) schemas.Product{
 func GetStock(item int) int {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Panicf("Error starting mongoClient: %s", err.Error())
 	}
@@ -68,14 +75,14 @@ func GetStock(item int) int {
 func GetAllProducts() []schemas.Product {	
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	if err != nil {
-		log.Panicf("Error starting mongoClient: %s", err.Error())
+		log.Printf("Error starting mongoClient: %s", err.Error())
 	}
 
 	cursor, err := client.Database("testing").Collection("products").Find(ctx, bson.M{})
 	if err != nil {
-		log.Panicf("Error getting products: %s", err.Error())
+		log.Printf("Error getting products: %s", err.Error())
 	}
 	var plist []schemas.Product
 
@@ -83,7 +90,7 @@ func GetAllProducts() []schemas.Product {
 		var result schemas.Product
 		err = cursor.Decode(&result)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error getting items for product: %s", err.Error())
 		}
 		plist = append(plist, result)
 	}
@@ -91,13 +98,13 @@ func GetAllProducts() []schemas.Product {
 	return plist	
 }
 
-
+//RemoveProductComponents deletes the given amount of components from inventory stock
 func RemoveProductComponents(prod schemas.Product, amount int) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	if err != nil {
-		log.Panicf("Error starting mongoClient: %s", err.Error())
+		log.Printf("Error starting mongoClient: %s", err.Error())
 	}	
 	collection := client.Database("testing").Collection("inventory")
 	for _, article := range(prod.ContainArticles){
@@ -108,7 +115,7 @@ func RemoveProductComponents(prod schemas.Product, amount int) {
 			bson.M{ "artid": article.ArtID }, 
 			bson.D{{"$set",bson.D{{"stock", newAmount}}}})
 		if err!=nil {
-			log.Fatal(err)
+			log.Printf("Error removing elements: %s" + err.Error())
 		}
 		log.Printf("Matched %v docs and updated %v documents.\n", ures.MatchedCount, ures.ModifiedCount)
 	}	
@@ -117,7 +124,7 @@ func RemoveProductComponents(prod schemas.Product, amount int) {
 func initializeInventory(){
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	collection := client.Database("testing").Collection("inventory")
 
 	log.Println("Generating screws, tops and so on...")
@@ -147,7 +154,7 @@ func initializeInventory(){
 func initializeProducts(){
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://172.17.0.2:27017/"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 
 	collection := client.Database("testing").Collection("products")
 	log.Println("Swipe previous products...")
@@ -170,4 +177,12 @@ func initializeProducts(){
 		}
 	}
 
+}
+
+func getEnvOrDefault(key string, defaultValue string) string {
+	val , ex := os.LookupEnv(key)
+	if !ex {
+		return defaultValue
+	}
+	return val
 }
