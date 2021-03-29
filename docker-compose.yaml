@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  stokkolm:
+    container_name: stokkolm
+    build: ./
+    depends_on:
+      - mongo
+    ports: 
+      - "1323:1323"
+    cpuset: 0,5
+    mem_limit: 500M
+    environment: 
+      MONGODB: mongodb://mongo:27017/
+      
+  mongo:
+    container_name: mongo
+    image: mongo:4.4.4

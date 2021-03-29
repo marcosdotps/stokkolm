@@ -28,14 +28,3 @@ type ContainArticles struct {
 	ArtID    int `json:"art_id,string"`
 	AmountOf int `json:"amount_of,string"`
 }
-
-//StockResponse for a given request of stock
-type StockResponse struct {
-	ProductsStock	[]ProductStock `json:"products_stock"`
-}
-
-//ProductStock
-type ProductStock struct {
-	Name    string `json:"name"`
-	Total 	int  `json:"total"`
-}

@@ -1,6 +1,7 @@
 package engine
 
 import (	
+	"log"
 
 	"github.com/mpenate/stokkolm/dbconnect"
 	"github.com/mpenate/stokkolm/schemas"	
@@ -38,14 +39,23 @@ func RetrieveFullStock() map[string]int{
 }
 
 //GetProductById returs a product filtered by id
-func GetMaxProductByName(name string) int{
-	product := dbconnect.GetProductByName(name)
-	return GetProductMaxItems(product)
+func GetMaxProductByName(productName string) (int, error){
+	product, err := dbconnect.GetProductByName(productName)
+	if err != nil {
+		log.Printf("ERROR: Failed to get max product by name. Unable to find productName %s.\n", productName)
+		return 0, err
+	}
+	return GetProductMaxItems(product), nil
 }
 
 
 //RemoveStock ensures stock is deleted
-func RemoveStock(productName string, amount int) {
-	prod := dbconnect.GetProductByName(productName)
+func RemoveStock(productName string, amount int) error{
+	prod, err := dbconnect.GetProductByName(productName)
+	if err!=nil {
+		log.Printf("ERROR: Failed to find productName %s.\n", productName)
+		return err
+	}
 	dbconnect.RemoveProductComponents(prod, amount)
+	return nil
 }
