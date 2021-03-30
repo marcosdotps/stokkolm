@@ -76,7 +76,7 @@ For testing we need to set up some env variables that will be used to ensure tha
 
 0- Make sure you have modules updated:
 ```shell
-$ go mod tidy
+$ go mod download
 ```
 
 1- Run mongodb in a container as we will need it for integration tests:
