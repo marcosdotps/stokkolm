@@ -94,3 +94,11 @@ docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mong
 INVENTORY_PATH="test_schemas/inventory.json" PRODUCTS_PATH="test_schemas/products.json" MONGO_URL="mongodb://YOURCONTAINERIP:27017/" go test -v github.com/mpenate/stokkolm/tests
 ```
 
+**WARNING!**
+
+In case you are running this in docker desktop, please make sure to expose mongo to your host interface by binding your port:
+
+```
+$ docker run -d --name mongotest -p 27017:27017 mongo:4.4.4
+```
+And make sure to set test config to point localhost instead of running step 2!!
