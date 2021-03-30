@@ -2,32 +2,34 @@ package dbconnect
 
 import (
 	"context"
-	"encoding/json"	
+	"encoding/json"
 	"io/ioutil"
 	"log"
-	"time"
 	"os"
+	"time"
 
 	"github.com/mpenate/stokkolm/schemas"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var(
-	mongoURL = getEnvOrDefault("MONGO_URL", "mongodb://mongo:27017/")
+var (
+	mongoURL      = getEnvOrDefault("MONGO_URL", "mongodb://mongo:27017/")
+	inventoryPath = getEnvOrDefault("INVENTORY_PATH", "resources/inventory.json")
+	productsPath  = getEnvOrDefault("PRODUCTS_PATH", "resources/products.json")
 )
-
 
 //InitializeDB sets the db on startup for demo purposes
 func InitializeDB() {
+	log.Printf("Initializing DB at %s with files %s and %s", mongoURL, inventoryPath, productsPath)
 	initializeInventory()
 	initializeProducts()
 }
 
-
 //GetProductByName uses a name to query the db
-func GetProductByName(name string) (schemas.Product, error){
+func GetProductByName(name string) (schemas.Product, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
@@ -38,7 +40,7 @@ func GetProductByName(name string) (schemas.Product, error){
 	mongoResp := client.Database("testing").Collection("products").FindOne(ctx, bson.M{"name": name})
 	if err != nil {
 		log.Printf("Error getting product %s", err.Error())
-	}	
+	}
 	var result schemas.Product
 
 	err = mongoResp.Decode(&result)
@@ -47,7 +49,6 @@ func GetProductByName(name string) (schemas.Product, error){
 		return schemas.Product{}, err
 	}
 	return result, nil
-
 }
 
 //GetStock returns the components stock stored in mongodb
@@ -72,7 +73,7 @@ func GetStock(item int) int {
 }
 
 //GetAllProducts returns the products stores in mongodb
-func GetAllProducts() []schemas.Product {	
+func GetAllProducts() []schemas.Product {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
@@ -94,56 +95,55 @@ func GetAllProducts() []schemas.Product {
 		}
 		plist = append(plist, result)
 	}
-		
-	return plist	
+	return plist
 }
 
 //RemoveProductComponents deletes the given amount of components from inventory stock
-func RemoveProductComponents(prod schemas.Product, amount int) {
+func RemoveProductComponents(prod schemas.Product, amount int) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Printf("Error starting mongoClient: %s", err.Error())
-	}	
+		return err
+	}
 	collection := client.Database("testing").Collection("inventory")
-	for _, article := range(prod.ContainArticles){
+	for _, article := range prod.ContainArticles {
 		newAmount := GetStock(article.ArtID) - (article.AmountOf * amount)
-		log.Printf("Removing %d", article.ArtID)
-		ures, err := collection.UpdateOne(
-			ctx, 
-			bson.M{ "artid": article.ArtID }, 
-			bson.D{{"$set",bson.D{{"stock", newAmount}}}})
-		if err!=nil {
-			log.Printf("Error removing elements: %s" + err.Error())
+		if newAmount < 0 {
+			return errors.Errorf("Impossible to assume that amount of elements")
 		}
-		log.Printf("Matched %v docs and updated %v documents.\n", ures.MatchedCount, ures.ModifiedCount)
-	}	
+		_, err := collection.UpdateOne(
+			ctx,
+			bson.M{"artid": article.ArtID},
+			bson.D{{"$set", bson.D{{"stock", newAmount}}}})
+		if err != nil {
+			log.Printf("Error removing elements: %s" + err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
-func initializeInventory(){
+func initializeInventory() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 	collection := client.Database("testing").Collection("inventory")
 
-	log.Println("Generating screws, tops and so on...")
-
-	stockfile, _ := ioutil.ReadFile("resources/inventory.json")
+	stockfile, _ := ioutil.ReadFile(inventoryPath)
 	stockdata := schemas.Inventory{}
-	log.Println("Swipe previous items...")
 
 	_, err = collection.DeleteMany(ctx, bson.M{})
 	if err != nil {
-		log.Fatalf("Error during stock clean up: %s", err.Error())
+		log.Printf("Warning: Error during inventory clean up.  If it is the first load, ignore this message. Error %s", err.Error())
 	}
 	err = json.Unmarshal([]byte(stockfile), &stockdata)
 	if err != nil {
-		log.Fatalf("Error generating stock: %s", err.Error())
+		log.Printf("Warning: Error during unmarshall inventory clean up response. If it is the first load, ignore this message. Error: %s", err.Error())
 	}
 
 	for i := 0; i < len(stockdata.Articles); i++ {
-		log.Printf("Cutting some %s. Added %d with id %d.\n", stockdata.Articles[i].Name, stockdata.Articles[i].Stock, stockdata.Articles[i].ArtID)
 		_, err := collection.InsertOne(ctx, stockdata.Articles[i])
 		if err != nil {
 			log.Fatalf("Insert stock ERROR: %s", err.Error())
@@ -151,36 +151,33 @@ func initializeInventory(){
 	}
 }
 
-func initializeProducts(){
+func initializeProducts() {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
 
 	collection := client.Database("testing").Collection("products")
-	log.Println("Swipe previous products...")
-	_, err = collection.DeleteMany(ctx, bson.M{})	
+	_, err = collection.DeleteMany(ctx, bson.M{})
 	if err != nil {
-		log.Fatalf("Error during products clean up: %s", err.Error())
+		log.Printf("Warning: Error during products cleaning. If it is the first load, ignore this message. Error: %s", err.Error())
 	}
 
-	prodsfile, _ := ioutil.ReadFile("resources/products.json")
-	proddata := schemas.Products{}	
+	prodsfile, _ := ioutil.ReadFile(productsPath)
+	proddata := schemas.Products{}
 	err = json.Unmarshal([]byte(prodsfile), &proddata)
 	if err != nil {
-		log.Fatalf("Error generating products: %s", err.Error())
+		log.Printf("Warning: Error during products unmarshalling. If it is the first load, ignore this message. Error: %s", err.Error())
 	}
 	for i := 0; i < len(proddata.Products); i++ {
-		log.Printf("Sending %s to our stores.\n", proddata.Products[i].Name)
 		_, err := collection.InsertOne(ctx, proddata.Products[i])
 		if err != nil {
 			log.Fatalf("Insert product ERROR: %s", err.Error())
 		}
 	}
-
 }
 
 func getEnvOrDefault(key string, defaultValue string) string {
-	val , ex := os.LookupEnv(key)
+	val, ex := os.LookupEnv(key)
 	if !ex {
 		return defaultValue
 	}

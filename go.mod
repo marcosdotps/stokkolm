@@ -3,16 +3,21 @@ module github.com/mpenate/stokkolm
 go 1.15
 
 require (
-	github.com/coreos/etcd v3.3.25+incompatible // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
-	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo-contrib v0.9.0
-	github.com/labstack/echo/v4 v4.1.17
-	github.com/mitchellh/mapstructure v1.4.1
-	go.etcd.io/etcd v3.3.25+incompatible
+	github.com/labstack/echo/v4 v4.2.1
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
 	go.mongodb.org/mongo-driver v1.4.5
-	go.uber.org/zap v1.16.0 // indirect
-	google.golang.org/grpc v1.26.0 // indirect
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
+	golang.org/x/net v0.0.0-20210330142815-c8897c278d10 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
+	golang.org/x/sys v0.0.0-20210326220804-49726bf1d181 // indirect
+	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
