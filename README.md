@@ -1,7 +1,7 @@
 # Stokkolm
 
 ## About
-This project wants to generate an scalable and highly decoupled api that could handle stock and orders in an easy way.
+This project is a time-boxed exercise that wants to generate an scalable and highly decoupled api that could handle stock and orders in an easy way. 
 
 ## General Overview
 #
@@ -102,3 +102,8 @@ In case you are running this in docker desktop, please make sure to expose mongo
 $ docker run -d --name mongotest -p 27017:27017 mongo:4.4.4
 ```
 And make sure to set test config to point localhost instead of running step 2!!
+
+
+## Improvements
+
+More decoupled functionality, better testing and a lot of fancy things could be done to make this a little bit better, but I had not infinite time :D 
