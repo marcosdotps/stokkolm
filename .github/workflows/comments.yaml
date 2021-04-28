@@ -12,10 +12,32 @@ jobs:
       - uses: khan/pull-request-comment-trigger@master
         id: check
         with:
-          trigger: 'DO-IT!'
-          reaction: rocket
+          trigger: '#RunIT'
+          reaction: eyes
         env:
-          GITHUB_TOKEN: '${{ secrets.GITHUBACTIONSTOKEN }}'          
+          GITHUB_TOKEN: '${{ secrets.GITHUBACTIONSTOKEN }}'    
+          
+      - name: just if something went wrong
+        if: steps.check.outputs.triggered == 'false'
+        env:
+          URL: ${{ github.event.issue.comments_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUBACTIONSTOKEN }}
+        run: |
+          curl \
+            -X POST \
+            $URL \
+            -H "Content-Type: application/json" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            --data '{ "body": "Not detected.." }'
+      
+      - name: comment PR
+        if: steps.check.outputs.triggered == 'true'
+        uses: unsplash/comment-on-pr@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUBACTIONSTOKEN }}
+        with:
+          msg: ":rocket: [starting ci integration test job]( https://github.com/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"')"
+          
       - name: send comment 
         if: steps.check.outputs.triggered == 'true'
         env:
