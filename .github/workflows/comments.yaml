@@ -1,0 +1,34 @@
+on:
+  pull_request:
+    types: [opened]
+  issue_comment:
+    types: [created]
+name: integration-test
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:  
+      - uses: khan/pull-request-comment-trigger@master
+        id: check
+        with:
+          trigger: 'DO-IT!'
+          reaction: rocket
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUBACTIONSTOKEN }}'          
+      - name: send comment 
+        if: steps.check.outputs.triggered == 'true'
+        env:
+          URL: ${{ github.event.issue.comments_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUBACTIONSTOKEN }}
+        run: |
+          curl \
+            -X POST \
+            $URL \
+            -H "Content-Type: application/json" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            --data '{ "body": ":rocket: [starting ci integration test job]( https://github.com/'"$GITHUB_REPOSITORY"'/actions/runs/'"$GITHUB_RUN_ID"')" }'
+
+
+    
+      
